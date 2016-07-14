@@ -357,12 +357,13 @@
 (defun pg-vst--update-goals (&optional inhibit)
   "Add VST overlays to goals buffer.
 With non-nil INHIBIT, remove them instead."
-  (with-current-buffer proof-goals-buffer
-    (dolist (ov (overlays-in (point-min) (point-max)))
-      (when (overlay-get ov 'pg-vst)
-        (delete-overlay ov)))
-    (unless inhibit
-      (pg-vst--add-overlays))))
+  (when (buffer-live-p proof-goals-buffer)
+    (with-current-buffer proof-goals-buffer
+      (dolist (ov (overlays-in (point-min) (point-max)))
+        (when (overlay-get ov 'pg-vst)
+          (delete-overlay ov)))
+      (unless inhibit
+        (pg-vst--add-overlays)))))
 
 (defun pg-vst--delayed-output-hook ()
   "Possibly add VST overlays to current buffer."

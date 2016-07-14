@@ -18,7 +18,8 @@ How do I use it?
 * Register the package by adding the following to your ``.emacs``::
 
     (with-eval-after-load 'coq
-      (load-file "~/.emacs.d/lisp/pg-vst/pg-vst.el"))
+      (load-file "~/.emacs.d/lisp/pg-vst/pg-vst.el")
+      (add-hook #'coq-mode-hook #'pg-vst-mode))
 
 * Enable PG-VST in a Coq session with ``M-x pg-vst-mode``.  You'll need to add the following to your file first, though::
 
@@ -67,3 +68,14 @@ How do I use it?
      (* This is the only line that changed: *)
      try __pretty_print.
     (** </PG-VST> **)
+
+  (Hopefully this snippet can be simplified if there's interest in using this code).
+
+Try it on ``progs/verif-reverse.v`` in VST's source tree!
+
+How does this work?
+===================
+
+A special notation is used to make C snippets easy to locate within the ``semax`` construct; with this notation in place, each time a new goal is displayed, PG-VST makes a pass on the goals, extracts each C snippet, pretty-prints the AST, syntax-highlights and indents the resulting C code with Emacs' C mode, and inserts the results in the goals buffer.
+
+The pretty-printer only supports a subset of VST's C at the moment; it should be easy to extend it.
