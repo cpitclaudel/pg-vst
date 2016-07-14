@@ -21,7 +21,7 @@ How do I use it?
       (load-file "~/.emacs.d/lisp/pg-vst/pg-vst.el")
       (add-hook #'coq-mode-hook #'pg-vst-mode))
 
-* Enable PG-VST in a Coq session with ``M-x pg-vst-mode``.  You'll need to add the following to your file first, though::
+* Enable PG-VST in a Coq session with ``M-x pg-vst-mode``.  You'll need to add the following to your file first, though (after ``Require Import floyd.proofauto.``)::
 
     (** <PG-VST> **)
     (* Undo abbreviations *)
