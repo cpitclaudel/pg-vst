@@ -92,10 +92,33 @@
 (defun pg-vst--format-int64 (int64)
   (pg-vst--format-raw int64))
 
-(defun pg-vst--coq-list-to-list (seq)
+(defun pg-vst--split-list (delim elems)
+  (let ((output nil)
+        (acc nil))
+    (while elems
+      (pcase (pop elems)
+        ((pred (equal delim))
+         (push (nreverse acc) output)
+         (setq acc nil))
+        (atom
+         (push atom acc))))
+    (nreverse (cons (nreverse acc) output))))
+
+(defun pg-vst--coq-list-to-list-1 (seq)
   (pcase seq
-    (`(cons ,hd ,tl)
-     (cons hd (pg-vst--coq-list-to-list tl)))))
+    ((or `(cons ,hd ,tl) `(,hd :: . ,tl))
+     (cons hd (pg-vst--coq-list-to-list tl)))
+    ((pred vectorp)
+     (pg-vst--split-list ':: (append seq nil)))))
+
+(defun pg-vst--coq-list-to-list (seq)
+  (mapcar (lambda (x) (pcase x (`(,x) x) (_ x)))
+          (pg-vst--coq-list-to-list-1 seq)))
+
+;; (pg-vst--coq-list-to-list '(a :: b :: c :: nil))
+;; (pg-vst--coq-list-to-list '[a :: b :: c])
+;; (pg-vst--coq-list-to-list '[a :: b c d :: e])
+;; (pg-vst--coq-list-to-list '[b c d])
 
 (defun pg-vst--format-type (type)
   (pcase type
@@ -171,7 +194,7 @@
 
 (defun pg-vst--format-stmt (prog)
   (pcase prog
-    (`(Sskip)
+    (`Sskip
      (insert "skip;"))
     (`(Sassign ,lv ,rv)
      (pg-vst--format-expr lv)
@@ -311,6 +334,17 @@
     (define-key map (kbd "<mouse-3>") #'pg-vst--kill-overlay)
     map))
 
+(defun pg-vst--parse (prog)
+  "Parse CLight program PROG.
+PROG must be wrapped in [[[__PROG__ ]]].  The only difficulty
+beyond parsing sexps is parsing lists of elements."
+  (pcase-dolist (`(,from . ,to) '((";" . " :: ") ("[" . "  [ ") ("]" . "  ] ")))
+    (setq prog (replace-regexp-in-string
+                (regexp-quote from) (replace-quote to) prog)))
+  (cdr (append (aref (aref (read prog) 0) 0) nil)))
+
+(pg-vst--parse "[[[__PROG__ (Seq [1;Seq a [1;2];3] (1 :: 2 :: 3 :: nil) (Argh (urgh [2])))]]]")
+
 (defun pg-vst--add-overlays ()
   "Add VST overlays to current buffer, if needed."
   (save-excursion
@@ -321,7 +355,7 @@
              (beg (progn (skip-syntax-backward "-") (point)))
              (end (progn (forward-list) (skip-syntax-forward "-") (point)))
              (prog (buffer-substring beg end))
-             (sexp (cdr (append (aref (aref (read prog) 0) 0) nil)))
+             (sexp (pg-vst--parse prog))
              (sep (propertize "\n" 'font-lock-face 'pg-vst-spacer-face))
              (sep-prefix "")
              (c-prog (concat "\n" sep-prefix sep

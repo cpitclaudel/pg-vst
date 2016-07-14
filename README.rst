@@ -24,25 +24,40 @@ How do I use it?
 * Enable PG-VST in a Coq session with ``M-x pg-vst-mode``.  You'll need to add the following to your file first, though (after ``Require Import floyd.proofauto.``)::
 
     (** <PG-VST> **)
-    (* Undo abbreviations *)
-    Ltac __pretty_print :=
-      repeat match goal with
-             | [ H := abbreviate : statement |- _ ] =>
-               unfold abbreviate in H; unfold H; clear H
-             end.
-    (* Disable `::` list notation to facilitate parsing *)
-    Notation nil := nil.
-    Notation cons := cons.
-    (* Make it easy to locate C programs *)
-    Notation "'semx'  A B  '[[[__PROG__'  P  ']]]'  C" := (semax A B P C) (at level 50).
-    (* Add a call to __pretty_print *)
+    Definition __PG_VST_TOGGLE__ :=
+      (* Global switch: do we want to massage the goal for PG-VST? *)
+      True.
+
+    Ltac __is_transparent symbol :=
+      (* Fail is ‘symbol’ is opaque; otherwise, do nothing. *)
+      match goal with
+      | _ => let __ := (eval unfold symbol in symbol) in idtac
+      | _ => fail 1 symbol "is not transparent"
+      end.
+
+    Ltac __pg_vst_post_processor :=
+      (* If __PG_VST_TOGGLE__ is opaque, unfold abbreviated [statement]s; otherwise, do nothing. *)
+      first [ __is_transparent __PG_VST_TOGGLE__ |
+              repeat match goal with
+                     | [ H := abbreviate : statement |- _ ] =>
+                       unfold abbreviate in H; unfold H; clear H
+                     end ].
+
+    Notation "'__PG_VST_SEMAX__'  A B  '[[[__PROG__'  P  ']]]'  C" :=
+      (* This notation wraps ‘P’ in easily-detectable tags.
+           PG-VST opens the corresponding scope in the background. *)
+      (semax A B P C) (at level 200) : __pg_vst_scope.
+
+    Open Scope __pg_vst_scope.
+    Opaque __PG_VST_TOGGLE__.
+
     Ltac abbreviate_semax ::=
      match goal with
      | |- semax _ _ _ _ =>
             simplify_Delta;
             unfold_abbrev';
             match goal with |- semax ?D _ ?C ?P =>
-    (*            abbreviate D : tycontext as Delta;*)
+               abbreviate D : tycontext as Delta;
                 abbreviate P : ret_assert as POSTCONDITION;
                 match C with
                 | Ssequence ?C1 ?C2 =>
@@ -65,8 +80,7 @@ How do I use it?
      clear_abbrevs;
      (*build_Struct_env;*)
      simpl typeof;
-     (* This is the only line that changed: *)
-     try __pretty_print.
+     __pg_vst_post_processor.
     (** </PG-VST> **)
 
   (Hopefully this snippet can be simplified if there's interest in using this code).
